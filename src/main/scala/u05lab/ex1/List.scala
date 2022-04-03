@@ -59,17 +59,14 @@ enum List[A] :
   def reverse(): List[A] = foldLeft[List[A]](Nil())((l, e) => e :: l)
 
   /** EXERCISES */
-  def zipRight: List[(A, Int)] = this match
-      case h :: t => t.foldLeft[List[(A, Int)]]((h, 0) :: Nil())
-        ((x, l) => x append List((l, x.length)))
-      case _ => Nil()
+  def zipRight: List[(A, Int)] = foldLeft[List[(A, Int)]](Nil())((x, l) => x append List((l, x.length)))
 
   def partition(pred: A => Boolean): (List[A], List[A]) = (filter(pred), filter(!pred(_)))
 
   def span(pred: A => Boolean): (List[A], List[A]) =
-    this.foldLeft((Nil(), Nil()))((x, l) => (x, l) match
-      case ((trueElems, Nil()), elem) if pred(elem) => (trueElems append List(elem), Nil())
-      case ((trueElems, list), elem) => (trueElems, list append List(elem)))
+    this.foldRight((Nil(), Nil()))((l, x) =>
+      if pred(l) then (l :: x._1, x._2)
+      else (Nil(), l :: x._1 append x._2))
 
   /** @throws UnsupportedOperationException if the list is empty */
   def reduce(op: (A, A) => A): A = this match
