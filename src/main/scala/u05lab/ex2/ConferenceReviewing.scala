@@ -2,13 +2,13 @@ package u05lab.ex2
 
 import java.util.stream.Collectors
 
-trait ConferenceReviewing:
+enum Question:
+  case RELEVANCE
+  case SIGNIFICANCE
+  case CONFIDENCE
+  case FINAL
 
-  enum Question:
-    case RELEVANCE
-    case SIGNIFICANCE
-    case CONFIDENCE
-    case FINAL
+trait ConferenceReviewing:
 
   def loadReview(article: Int, scores: Map[Question, Int]): Unit
 
@@ -29,35 +29,34 @@ object ConferenceReviewing:
 
 class ConferenceReviewingImpl extends ConferenceReviewing:
 
-  import scala.collection.mutable.ListBuffer
   import Question.*
 
-  val reviews = ListBuffer[(Int, Map[Question, Int])]()
+  private var reviews = Map[Int, List[Map[Question, Int]]]()
 
   override def loadReview(article: Int, scores: Map[Question, Int]): Unit =
     if scores.size < Question.values.length then throw IllegalArgumentException()
-    reviews += (article -> scores)
+    reviews = reviews + (article -> (scores :: reviews.getOrElse(article, List())))
 
   override def loadReview(article: Int, relevance: Int, significance: Int, confidence: Int, fin: Int): Unit =
-    val scores = Map((RELEVANCE -> relevance), (SIGNIFICANCE -> significance), (CONFIDENCE -> confidence), (FINAL -> fin))
-    loadReview(article, scores)
+    loadReview(article, Map((RELEVANCE -> relevance), (SIGNIFICANCE -> significance), (CONFIDENCE -> confidence), (FINAL -> fin)))
 
   override def orderedScores(article: Int, question: Question): List[Int] =
-    reviews.filter(_._1 == article).map(_._2.get(question).get).sorted.toList
+    reviews(article).map(_(question)).sorted
 
   override def averageFinalScore(article: Int): Double =
-    val usefulReviews = reviews.filter(_._1 == article)
-    usefulReviews.map(_._2.get(FINAL).get).sum / usefulReviews.length
+    mean(reviews(article).map(_(FINAL)))
 
   private def accepted(article: Int): Boolean =
-    averageFinalScore(article) > 5 && reviews.filter(_._1 == article).flatMap(_._2).filter(x => x._1 == RELEVANCE && x._2 > 8).nonEmpty
+    averageFinalScore(article) >= 5 && reviews(article).filter(_(RELEVANCE) >= 8).nonEmpty
 
   override def acceptedArticles: Set[Int] =
-    reviews.map(_._1).distinct.filter(accepted(_)).toSet
+    reviews.keySet.filter(accepted(_))
 
   override def sortedAcceptedArticles: List[(Int, Double)] =
-    this.acceptedArticles.map(r => (r, this.averageFinalScore(r)))
+    acceptedArticles.map(r => (r, this.averageFinalScore(r)))
       .toList.sorted((x, y) => x._2.compareTo(y._2))
 
   override def averageWeightedFinalScoreMap: Map[Int, Double] =
-    reviews.map(_._1).distinct.map(r => (r, this.averageFinalScore(r))).toMap
+    reviews.keySet.map(article => (article, mean(reviews(article).map(r => r(CONFIDENCE)*r(FINAL)/10.0)))).toMap
+
+  private def mean(list: List[Double]): Double = list.sum / list.size
