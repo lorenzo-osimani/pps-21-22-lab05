@@ -59,7 +59,9 @@ enum List[A] :
   def reverse(): List[A] = foldLeft[List[A]](Nil())((l, e) => e :: l)
 
   /** EXERCISES */
-  def zipRight: List[(A, Int)] = foldLeft[List[(A, Int)]](Nil())((x, l) => x append List((l, x.length)))
+  def zipRight: List[(A, Int)] =
+    val size = length - 1
+    foldRight[List[(A, Int)]](Nil())((l, x) => (l, size - x.length) :: x)
 
   def partition(pred: A => Boolean): (List[A], List[A]) = (filter(pred), filter(!pred(_)))
 
